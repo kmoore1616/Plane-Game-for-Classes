@@ -1,6 +1,7 @@
 import pygame
 import random
 import os
+import numpy
 pygame.init()
 
 win = pygame.display.set_mode((0,0), pygame.FULLSCREEN)
@@ -8,11 +9,11 @@ pygame.display.set_caption("Plane Game")
 
 velocity = 1
 tree_depth = 10
-cloud_depth = 10
+cloud_depth = 20
 tree_objs = []
 projectile_objs = []
 cloud_objs = []
-cloud_size = 10
+cloud_size = 15
 
 x = 1920/2
 y = 1080/2
@@ -23,10 +24,10 @@ explosion_scale = 60
 
 run = True
 
-explosion_1 = pygame.transform.scale(pygame.image.load(os.path.join('plane_game','assets', 'explosion1.png')), (explosion_scale, explosion_scale)) 
-explosion_2 = pygame.transform.scale(pygame.image.load(os.path.join('plane_game','assets', 'explosion2.png')), (explosion_scale, explosion_scale))
-missile = pygame.transform.scale(pygame.image.load(os.path.join('plane_game','assets', 'missile.png')), (30, 30)) 
-player = pygame.transform.scale(pygame.image.load(os.path.join('plane_game','assets', 'player.png')), (140, 140)) 
+explosion_1 = pygame.transform.scale(pygame.image.load(os.path.join('assets', 'explosion1.png')), (explosion_scale, explosion_scale)) 
+explosion_2 = pygame.transform.scale(pygame.image.load(os.path.join('assets', 'explosion2.png')), (explosion_scale, explosion_scale))
+missile = pygame.transform.scale(pygame.image.load(os.path.join('assets', 'missile.png')), (30, 30)) 
+player = pygame.transform.scale(pygame.image.load(os.path.join('assets', 'player.png')), (140, 140)) 
 
 # Types are Blaster 0, Missile 1, Lighting bolt 2 x+62 & y+26
 # Inital blaster bolt will be green and transition to red as upgraded
@@ -73,34 +74,41 @@ class Tree():
 
 
 class Clouds:
-    def __init__(self, x_ps, cloud_size):
+    def __init__(self, x_ps, y_ps, cloud_size):
         self.x_ps = x_ps
-        self.y_ps = -10
+        self.y_ps = y_ps
         self.cloud_props = []
         self.cloud_size = cloud_size
-    
+        self.noise_a = 0
+        self.noise_b = 0
+        
     def setup(self):
-        temp_list = []
-        for _ in range(self.cloud_size):
-            for _ in range(self.cloud_size):
-                temp_list.append(random.randint(0, 1))
-        
-            self.cloud_props.append(temp_list)
-            print(self.cloud_props)
-            temp_list.clear()
-        print(self.cloud_props)
-            
-        
+        noise = [-1,1]
+        self.noise_a = (random.choice(noise)*random.randint(2,8))
+        self.noise_b = (random.choice(noise)*random.randint(2,8))
+        self.y_ps = random.randint(-1800, -50)
+        self.x_ps = random.randint(10, 1850)
+        self.cloud_props = numpy.random.choice([0,1],size=(self.cloud_size, self.cloud_size))
     
     def draw_clouds(self):
-        for cloud in self.cloud_props:
-            if cloud:
-                pygame.draw.rect(win, (255, 255, 255), (self.x_ps))
+        
+        for i in range(cloud_size):
+            for j in range(cloud_size):
+                if self.cloud_props[i][j] == 1:
+                    noise = [-1, 1]
+                    pygame.draw.rect(win, (255, 255, 255), (self.x_ps + j*10 + self.noise_a, self.y_ps+i*10 + self.noise_b, 10, 10))
+        self.y_ps += 1
+    def get_y(self):
+        return self.y_ps
+       
+        
 
+
+# Cloud Setup
 for clouds in range(cloud_depth):
-    cloud_objs.append(Clouds(random.randint(10, 1850), cloud_size))
+    cloud_objs.append(Clouds(random.randint(10, 1850), random.randint(-1000, -25), cloud_size))
+    cloud_objs[clouds].setup()
 
-cloud_objs[0].setup()
 
 for tree in range(tree_depth):
     tree_x = random.randint(100, 1800)
@@ -121,12 +129,10 @@ while run:
                              
         
     keys = pygame.key.get_pressed()
-    
     if keys[pygame.K_a] and x > 0:
         x -= velocity + 3
     if keys[pygame.K_d] and x < 1800:
         x += velocity + 3
-        
     if keys[pygame.K_w] and y > 0:
         y -= velocity + 3
     if keys[pygame.K_s] and y < 980:
@@ -160,6 +166,12 @@ while run:
     
     # Ship - Shooting pos is x+62 & y+26
     win.blit(player, (x, y))
+    
+    for clouds in cloud_objs:
+        clouds.draw_clouds()
+        if clouds.get_y() > 1100:
+            clouds.setup()
+    
     pygame.display.flip() 
     
 pygame.quit()
